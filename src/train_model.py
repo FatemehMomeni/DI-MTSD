@@ -49,10 +49,10 @@ def run_classifier():
     theta = args.theta
     
     # create normalization dictionary for preprocessing
-    with open("/content/MDL-Stance-Distillation/src/noslang_data.json", "r") as f:
+    with open("/content/DI-MTSD/src/noslang_data.json", "r") as f:
         data1 = json.load(f)
     data2 = {}
-    with open("/content/MDL-Stance-Distillation/src/emnlp_dict.txt","r") as f:
+    with open("/content/DI-MTSD/src/emnlp_dict.txt","r") as f:
         lines = f.readlines()
         for line in lines:
             row = line.split('\t')
@@ -77,9 +77,9 @@ def run_classifier():
             print("current random seed: ", seed)
 
             if train_mode == "unified":
-                filename1 = '/content/MDL-Stance-Distillation/src/Dataset/raw_train_all_dataset_onecol.csv'
-                filename2 = '/content/MDL-Stance-Distillation/src/Dataset/raw_val_all_dataset_onecol.csv'
-                filename3 = '/content/MDL-Stance-Distillation/src/Dataset/raw_test_generalization_all_dataset_onecol.csv'
+                filename1 = '/content/DI-MTSD/Dataset/raw_train_all_dataset_onecol.csv'
+                filename2 = '/content/DI-MTSD/Dataset/raw_val_all_dataset_onecol.csv'
+                filename3 = '/content/DI-MTSD/Dataset/raw_test_generalization_all_dataset_onecol.csv'
                 
                 x_train,y_train,x_train_target = pp.clean_all(filename1,col,dataset_name,normalization_dict)
                 x_val,y_val,x_val_target = pp.clean_all(filename2,col,dataset_name,normalization_dict)
