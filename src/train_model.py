@@ -94,7 +94,8 @@ def run_classifier():
                 x_test,y_test,x_test_target = pp.clean_all(filename3,col,dataset_name,normalization_dict)
 
             if model_name == 'student':
-                y_train2 = torch.load(teacher[dataset_name]+'_seed{}.pt'.format(seed))  # load teacher predictions
+                #y_train2 = torch.load(teacher[dataset_name]+'_seed{}.pt'.format(seed))  # load teacher predictions
+                y_train2 = torch.load('../teacher/teacher_output_all_batch'+'_seed{}.pt'.format(seed))
 
             num_labels = 3  # Favor, Against and None
             # print(x_train_target[0])
