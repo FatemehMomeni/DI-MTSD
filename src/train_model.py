@@ -95,7 +95,7 @@ def run_classifier():
 
             if model_name == 'student':
                 #y_train2 = torch.load(teacher[dataset_name]+'_seed{}.pt'.format(seed))  # load teacher predictions
-                y_train2 = torch.load('/content/DI-MTSD/teacher_models/test_generalization_dataset/teacher_output_all_batch'+'_seed{}.pt'.format(seed))
+                y_train2 = torch.load('/content/DI-MTSD/teacher_models/raw_test_dataset/teacher_output_all_batch'+'_seed{}.pt'.format(seed))
 
             num_labels = 3  # Favor, Against and None
             # print(x_train_target[0])
