@@ -79,7 +79,7 @@ def run_classifier():
             if train_mode == "unified":
                 filename1 = '/content/DI-MTSD/Dataset/raw_train_all_dataset_onecol.csv'
                 filename2 = '/content/DI-MTSD/Dataset/raw_val_all_dataset_onecol.csv'
-                filename3 = '/content/DI-MTSD/Dataset/raw_test_all_dataset_onecol.csv'
+                filename3 = '/content/DI-MTSD/Dataset/test.csv'
                 
                 x_train,y_train,x_train_target = pp.clean_all(filename1,col,dataset_name,normalization_dict)
                 x_val,y_val,x_val_target = pp.clean_all(filename2,col,dataset_name,normalization_dict)
