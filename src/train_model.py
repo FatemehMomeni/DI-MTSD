@@ -37,10 +37,10 @@ def run_classifier():
     alpha = args.alpha
     
     #Creating Normalization Dictionary
-    with open("./noslang_data.json", "r") as f:
+    with open("/content/DI-MTSD/src/noslang_data.json", "r") as f:
         data1 = json.load(f)
     data2 = {}
-    with open("./emnlp_dict.txt","r") as f:
+    with open("/content/DI-MTSD/src/emnlp_dict.txt","r") as f:
         lines = f.readlines()
         for line in lines:
             row = line.split('\t')
@@ -52,9 +52,9 @@ def run_classifier():
         for seed in random_seeds:    
             print("current random seed: ", seed)
             if train_mode == "unified":
-                filename1 = '../data/raw_train_all_onecol.csv'
-                filename2 = '../data/raw_val_all_onecol.csv'
-                filename3 = '../data/raw_test_all_onecol.csv'
+                filename1 = '/content/DI-MTSD/data/raw_train_all_onecol.csv'
+                filename2 = '/content/DI-MTSD/data/raw_val_all_onecol.csv'
+                filename3 = '/content/DI-MTSD/data/election2020.csv'
                 x_train,y_train,x_train_target,y_train2,x_train_target2 = \
                                             pp.clean_all(filename1,'Stance1',normalization_dict)
                 x_val,y_val,x_val_target,y_val2,x_val_target2 = \
