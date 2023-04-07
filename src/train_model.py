@@ -54,7 +54,7 @@ def run_classifier():
             if train_mode == "unified":
                 filename1 = '/content/DI-MTSD/data/raw_train_all_onecol.csv'
                 filename2 = '/content/DI-MTSD/data/raw_val_all_onecol.csv'
-                filename3 = '/content/DI-MTSD/data/election2020.csv'
+                filename3 = '/content/DI-MTSD/data/election2020(edited).csv'
                 x_train,y_train,x_train_target,y_train2,x_train_target2 = \
                                             pp.clean_all(filename1,'Stance1',normalization_dict)
                 x_val,y_val,x_val_target,y_val2,x_val_target2 = \
