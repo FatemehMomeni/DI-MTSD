@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 from transformers import BertTokenizer, AutoTokenizer, BertweetTokenizer
+import numpy as np
     
 
 # Tokenization
@@ -104,11 +105,18 @@ def sep_test_set(input_data,dataset_name):
     elif dataset_name == 'covid':
         data_list = [input_data] # covid dataset only contains one target
     elif dataset_name == 'all':
-        data_list = [input_data[:387], input_data[387:1361], input_data[1361:3041], input_data[3041:4217],\
-                     input_data[4217:4572], input_data[4572:4835], input_data[4835:5107], input_data[5107:5462],\
-                     input_data[5462:5725], input_data[5725:5997], input_data[5997:6217], input_data[6217:6502],\
-                     input_data[6502:6797], input_data[6797:7077], input_data[7077:7441], input_data[7441:8228],\
-                     input_data[8228:8837], input_data[8837:9568], input_data[9568:10237], input_data[10237:10734],\
-                     input_data[10734:11231], input_data[11231:11948], input_data[11948:12550]]
+#         data_list = [input_data[:387], input_data[387:1361], input_data[1361:3041], input_data[3041:4217],\
+#                      input_data[4217:4572], input_data[4572:4835], input_data[4835:5107], input_data[5107:5462],\
+#                      input_data[5462:5725], input_data[5725:5997], input_data[5997:6217], input_data[6217:6502],\
+#                      input_data[6502:6797], input_data[6797:7077], input_data[7077:7441], input_data[7441:8228],\
+#                      input_data[8228:8837], input_data[8837:9568], input_data[9568:10237], input_data[10237:10734],\
+#                      input_data[10734:11231], input_data[11231:11948], input_data[11948:12550]]
+        data_list = list()
+        unique_ids = unique_ids = np.unique(input_data, return_index=True)
+        for i in range(len(unique_ids[1])): 
+          if i == len(unique_ids[1])-1:
+            data_list.append(input_data[unique_ids[1][i]:])
+          else:
+            data_list.append(input_data[unique_ids[1][i]:unique_ids[1][i+1]-1])
     
     return data_list
