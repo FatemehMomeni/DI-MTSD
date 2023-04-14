@@ -68,7 +68,7 @@ def run_classifier():
                 'covid':'teacher_output_covid_whole',
                 'all':'teacher_output_all_batch',
     }
-    target_num = {'mt': 6, 'semeval': 4, 'wtwt': 4, 'am': 8, 'covid': 1, 'all': 23}
+    target_num = {'mt': 6, 'semeval': 4, 'wtwt': 4, 'am': 8, 'covid': 1, 'all': 23}  # 'all': 3 (generalization), 4 (srq)
     eval_batch = {'mt': False, 'semeval': False, 'wtwt': True, 'am': True, 'covid': False, 'all': True}
 
     for target_index in range(len(target_word_pair)):
