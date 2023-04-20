@@ -79,7 +79,7 @@ def run_classifier():
             if train_mode == "unified":
                 filename1 = '/content/DI-MTSD/Dataset/raw_train_all_dataset_onecol.csv'
                 filename2 = '/content/DI-MTSD/Dataset/raw_val_all_dataset_onecol.csv'
-                filename3 = '/content/DI-MTSD/Dataset/raw_test_generalization_all_dataset_onecol.csv'
+                filename3 = '/content/DI-MTSD/Dataset/srq(edited).csv'
                 
                 x_train,y_train,x_train_target = pp.clean_all(filename1,col,dataset_name,normalization_dict)
                 x_val,y_val,x_val_target = pp.clean_all(filename2,col,dataset_name,normalization_dict)
@@ -95,7 +95,7 @@ def run_classifier():
 
             if model_name == 'student':
                 #y_train2 = torch.load(teacher[dataset_name]+'_seed{}.pt'.format(seed))  # load teacher predictions
-                y_train2 = torch.load('/content/DI-MTSD/teacher_models/raw_test_dataset/teacher_output_all_batch'+'_seed{}.pt'.format(seed))
+                y_train2 = torch.load('/content/DI-MTSD/teacher_models/different_test_dataset/corrected_code/teacher_output_all_batch'+'_seed{}.pt'.format(seed))
 
             num_labels = 3  # Favor, Against and None
             # print(x_train_target[0])
