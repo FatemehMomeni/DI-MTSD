@@ -117,6 +117,4 @@ def clean_all(filename,col,dataset_name,norm_dict):
         clean_data[i] = data_clean(raw_data[i],norm_dict) # clean each tweet text [['word1','word2'],[...],...]
         x_target[i] = data_clean(x_target[i],norm_dict)
     
-    x_target_set = related_targets(clean_data, x_target)
-    
-    return clean_data,label,x_target,x_target_set
+    return clean_data,label,x_target
