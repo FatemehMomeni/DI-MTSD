@@ -93,9 +93,9 @@ def run_classifier():
                 x_val,y_val,x_val_target = pp.clean_all(filename2,col,dataset_name,normalization_dict)
                 x_test,y_test,x_test_target = pp.clean_all(filename3,col,dataset_name,normalization_dict)
 
-            if model_name == 'student':
-                #y_train2 = torch.load(teacher[dataset_name]+'_seed{}.pt'.format(seed))  # load teacher predictions
-                y_train2 = torch.load('/content/DI-MTSD/teacher_models/different_test_dataset/corrected_code/teacher_output_all_batch'+'_seed{}.pt'.format(seed))
+#             if model_name == 'student':
+#                 #y_train2 = torch.load(teacher[dataset_name]+'_seed{}.pt'.format(seed))  # load teacher predictions
+#                 y_train2 = torch.load('/content/DI-MTSD/teacher_models/different_test_dataset/corrected_code/teacher_output_all_batch'+'_seed{}.pt'.format(seed))
             
             unique_targets = [['bernie','sanders'],['lockdown','in','new','york','state'],['anthem','cigna'],['atheism'],['donald','trump'],['cigna','express','scripts'],['legalization','of','abortion'],['school','uniforms'],['feminist','movement'],['aetna','humana'],['cloning'],['abortion'],['ted','cruz'],['hillary','clinton'],['death','penalty'],['marijuana','legalization'],['gun','control'],['minimum','wage'],['cvs','aetna'],['nuclear','energy']]
             related_terms = [[['bernie','sanders'],['bernie','sanders'],['bernie','sanders']],[['lockdowning'],['States'],['newly']],[['cignattk'],['cignamerger'],['cinc']],[['atheists'],['atheistq'], ['atheism']],[['donaldjtrump'],['donald','trump'],['donald','trump']],[['cignattk'],['cignamerger'],['cinc']],[['legalise'],['legalism'],['decriminalizing']],[['schoolwork'],['education'],['schooling']],[['feminist'],['motion'],['feministatheists']],[['humanas'],['aetnawith'],['aethna']],[['stoning'],['cloning'],['cloning']],[['abortion'],['abortion'],['abortion']],[['ted','cruz'],['ted','cruz'],['ted','cruz']],[['hillaryor'],['hillaryor'],['hillary','clinton']],[['demise'],['demise'],['dead']],[['legalise'],['legalism'],['decriminalizing']],[['firearm'],['rifle'],['handgun']],[['minimums'],['wagering'],['minimumwage']],[['aetnawith'],['aethna'],['aetnaful']],[['energetic'],['nuclear','energy'],['nuclear','energy']]]
@@ -116,7 +116,10 @@ def run_classifier():
                 for i in range(len(x_test_target)):
                   index = unique_targets_test.index(x_test_target[i])
                   x_test_target_2[i] = related_terms_test[index][fix]                
-        
+                    
+              if model_name == 'student':
+                y_train2 = torch.load('/content/DI-MTSD/teacher_models/test_generalization_dataset/related_targets/teacher_output_all_batch'+'_seed{}'.format(seed)+'_fix{}.pt'.format(fix))
+                    
 
               num_labels = 3  # Favor, Against and None
               # print(x_train_target[0])
