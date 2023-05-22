@@ -113,6 +113,6 @@ def sep_test_set(input_data,dataset_name):
         # generalization test set
         data_list = [input_data[:10238], input_data[10238:12204], input_data[12204:]]
         # diffetent test set
-        data_list = [input_data[:2020], input_data[2020:3266], input_data[3266:4484], input_data[4484:]]
+        #data_list = [input_data[:2020], input_data[2020:3266], input_data[3266:4484], input_data[4484:]]
     
     return data_list
