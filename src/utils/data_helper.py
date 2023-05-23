@@ -4,7 +4,7 @@ from transformers import BertTokenizer, AutoTokenizer, BertweetTokenizer
     
 
 # Tokenization
-def convert_data_to_ids(tokenizer, target, text):
+def convert_data_to_ids(tokenizer, target, related_targets, text):
     
     input_ids, seg_ids, attention_masks, sent_len = [], [], [], []
     for tar, sent in zip(target, text):
@@ -23,6 +23,21 @@ def convert_data_to_ids(tokenizer, target, text):
         seg_ids.append(encoded_dict['token_type_ids'])
         attention_masks.append(encoded_dict['attention_mask'])
         sent_len.append(sum(encoded_dict['attention_mask']))
+    
+    for rt in related_targets:
+      for tar, sent in zip(rt, text):
+          encoded_dict = tokenizer.encode_plus(
+                              ' '.join(tar),
+                              ' '.join(sent),             # Sentence to encode.
+                              add_special_tokens = True, # Add '[CLS]' and '[SEP]'
+                              max_length = 128,           # Pad & truncate all sentences.
+                              padding = 'max_length',
+                              return_attention_mask = True,   # Construct attn. masks.
+                              truncation = True,
+                        )
+      
+          # Add the encoded sentence to the list.    
+          input_ids.append(encoded_dict['input_ids'])    
     
     return input_ids, seg_ids, attention_masks, sent_len
 
