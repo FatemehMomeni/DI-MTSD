@@ -4,7 +4,7 @@ from transformers import BertTokenizer, AutoTokenizer, BertweetTokenizer
     
 
 # Tokenization
-def convert_data_to_ids(tokenizer, target, related_target1, related_target2, related_target3, text):
+def convert_data_to_ids(tokenizer, target, related_target1, related_target2, related_target3, text, label):
     
     input_ids, seg_ids, attention_masks, sent_len = [], [], [], []
     for tar, sent in zip(target, text):
@@ -38,7 +38,13 @@ def convert_data_to_ids(tokenizer, target, related_target1, related_target2, rel
                         )
       
           # Add the encoded sentence to the list.    
-          input_ids.append(encoded_dict['input_ids'])    
+          input_ids.append(encoded_dict['input_ids'])  
+          seg_ids.append(encoded_dict['token_type_ids'])
+          attention_masks.append(encoded_dict['attention_mask'])
+          sent_len.append(sum(encoded_dict['attention_mask']))  
+    # to prevent tensor mismatch, add labels 3 times more (the first extend duplicates elements, so need once more)
+    for i in range(2):
+      label.extend(label)        
     
     return input_ids, seg_ids, attention_masks, sent_len
 
@@ -62,11 +68,11 @@ def data_helper_bert(x_train_all,x_val_all,x_test_all,main_task_name,model_selec
 
     # tokenization
     x_train_input_ids, x_train_seg_ids, x_train_atten_masks, x_train_len = \
-                    convert_data_to_ids(tokenizer, x_train_target, x_train_related_target1,x_train_related_target2,x_train_related_target3, x_train)
+                    convert_data_to_ids(tokenizer, x_train_target, x_train_related_target1,x_train_related_target2,x_train_related_target3, x_train, y_train)
     x_val_input_ids, x_val_seg_ids, x_val_atten_masks, x_val_len = \
-                    convert_data_to_ids(tokenizer, x_val_target, x_val_related_target1,x_val_related_target2,x_val_related_target3, x_val)
+                    convert_data_to_ids(tokenizer, x_val_target, x_val_related_target1,x_val_related_target2,x_val_related_target3, x_val, y_val)
     x_test_input_ids, x_test_seg_ids, x_test_atten_masks, x_test_len = \
-                    convert_data_to_ids(tokenizer, x_test_target, x_test_related_target1,x_test_related_target2,x_test_related_target3, x_test)
+                    convert_data_to_ids(tokenizer, x_test_target, x_test_related_target1,x_test_related_target2,x_test_related_target3, x_test, y_test)
     
     x_train_all = [x_train_input_ids,x_train_seg_ids,x_train_atten_masks,y_train,x_train_len]
     x_val_all = [x_val_input_ids,x_val_seg_ids,x_val_atten_masks,y_val,x_val_len]
