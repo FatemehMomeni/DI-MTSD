@@ -71,9 +71,9 @@ def load_data(filename,usecols,col,dataset_name):
     raw_text = pd.read_csv(filename[0],usecols=[0], encoding='ISO-8859-1')
     raw_label = pd.read_csv(filename[0],usecols=[usecols[0]], encoding='ISO-8859-1')
     raw_target = pd.read_csv(filename[0],usecols=[usecols[1]], encoding='ISO-8859-1')
-    related_target1 = pd.read_csv(filename[0],usecols=[4], encoding='ISO-8859-1')
-    related_target2 = pd.read_csv(filename[0],usecols=[5], encoding='ISO-8859-1')
-    related_target3 = pd.read_csv(filename[0],usecols=[6], encoding='ISO-8859-1')    
+    related_target1 = pd.read_csv(filename[0],usecols=[3], encoding='ISO-8859-1')
+    related_target2 = pd.read_csv(filename[0],usecols=[4], encoding='ISO-8859-1')
+    related_target3 = pd.read_csv(filename[0],usecols=[5], encoding='ISO-8859-1')    
     if dataset_name in ['mt','semeval','am','covid','all']:
         label = pd.DataFrame.replace(raw_label,['FAVOR','NONE','AGAINST'], [2,1,0])
     elif dataset_name in ['wtwt']:
