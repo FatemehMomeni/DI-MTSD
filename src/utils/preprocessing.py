@@ -78,7 +78,7 @@ def load_data(filename,usecols,col,dataset_name):
         label = pd.DataFrame.replace(raw_label,['FAVOR','NONE','AGAINST'], [2,1,0])
     elif dataset_name in ['wtwt']:
         label = pd.DataFrame.replace(raw_label,['support','comment','refute','unrelated'], [2,1,0,3])
-    concat_text = pd.concat([raw_text, label, raw_target, related_target1, related_target2, related_target3], ], axis=1)
+    concat_text = pd.concat([raw_text, label, raw_target, related_target1, related_target2, related_target3], axis=1)
     concat_text.rename(columns={'Stance 1':'Stance','Target 1':'Target','Stance 2':'Stance','Target 2':'Target'}, 
                        inplace=True)
     concat_text = concat_text[concat_text.Stance != 3] # remove 'unrelated' label of WT-WT
