@@ -7,6 +7,13 @@ from transformers import BertTokenizer, AutoTokenizer, BertweetTokenizer
 def convert_data_to_ids(tokenizer, target, related_target1, related_target2, related_target3, text, label):
     
     input_ids, seg_ids, attention_masks, sent_len = [], [], [], []
+    tar_with_rel_tar = list()
+    for tar in range(len(target)):
+      related_target = related_target1[tar][0] + ' ' + related_target2[tar][0] + ' ' + related_target3[tar][0]
+      targets = ' '.join(target[tar]) + ' [SEP] ' + related_target
+      tar_with_rel_tar.append(targets)
+    
+    # origin
     for tar, sent in zip(target, text):
         encoded_dict = tokenizer.encode_plus(
                             ' '.join(tar),
@@ -24,14 +31,10 @@ def convert_data_to_ids(tokenizer, target, related_target1, related_target2, rel
         attention_masks.append(encoded_dict['attention_mask'])
         sent_len.append(sum(encoded_dict['attention_mask']))
     
-    related_targets = list()
-    for i in range(len(related_target1)):
-      related_targets.append([related_target1[i][0] + ' ' + related_target2[i][0] + ' ' + related_target3[i][0]])
-    #related_targets = [related_target1,related_target2,related_target3]
-    #for rt in related_targets:
-    for tar, sent in zip(related_targets, text):
+    # added related targets as senetence
+    for tar, sent in zip(tar_with_rel_tar, text):
         encoded_dict = tokenizer.encode_plus(
-                            ' '.join(tar),
+                            tar,
                             ' '.join(sent),             # Sentence to encode.
                             add_special_tokens = True, # Add '[CLS]' and '[SEP]'
                             max_length = 128,           # Pad & truncate all sentences.
@@ -48,7 +51,7 @@ def convert_data_to_ids(tokenizer, target, related_target1, related_target2, rel
     # to prevent tensor mismatch, add labels 3 times more (the first extend duplicates elements, so need once more)
     #for i in range(2):
       #label.extend(label)
-    label.extend(label)    
+    #label.extend(label)    
     
     return input_ids, seg_ids, attention_masks, sent_len
 
