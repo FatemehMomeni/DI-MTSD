@@ -15,11 +15,21 @@ def load_data(filename,usecols,col,dataset_name):
     related_target1 = pd.read_csv(filename[0],usecols=[3], encoding='ISO-8859-1')
     related_target2 = pd.read_csv(filename[0],usecols=[4], encoding='ISO-8859-1')
     related_target3 = pd.read_csv(filename[0],usecols=[5], encoding='ISO-8859-1')    
+    
+    if filename[0].split('/')[-1] != 'test_gen_related.csv':
+      raw_target.loc[10048: 20031] = related_target1.loc[10048: 20031]
+      raw_target.loc[20032: 30015] = related_target2.loc[20032: 30015]
+      raw_target.loc[30016:] = related_target3.loc[30016:]
+    else :
+      raw_target.loc[3616: 7135] = related_target1.loc[3616: 7135]
+      raw_target.loc[7136: 10655] = related_target2.loc[7136: 10655]
+      raw_target.loc[10656:] = related_target3.loc[10656:]
+
     if dataset_name in ['mt','semeval','am','covid','all']:
         label = pd.DataFrame.replace(raw_label,['FAVOR','NONE','AGAINST'], [2,1,0])
     elif dataset_name in ['wtwt']:
         label = pd.DataFrame.replace(raw_label,['support','comment','refute','unrelated'], [2,1,0,3])
-    concat_text = pd.concat([raw_text, label, raw_target, related_target1, related_target2, related_target3], axis=1)
+    concat_text = pd.concat([raw_text, label, raw_target], axis=1)
     concat_text.rename(columns={'Stance 1':'Stance','Target 1':'Target','Stance 2':'Stance','Target 2':'Target'}, 
                        inplace=True)
     concat_text = concat_text[concat_text.Stance != 3] # remove 'unrelated' label of WT-WT
@@ -55,16 +65,10 @@ def clean_all(filename,col,dataset_name,norm_dict):
     raw_data = concat_text['Tweet'].values.tolist() # convert DataFrame to list ['string','string',...]
     label = concat_text['Stance'].values.tolist()
     x_target = concat_text['Target'].values.tolist()
-    x_related_target1 = concat_text['RelatedTarget1'].values.tolist()
-    x_related_target2 = concat_text['RelatedTarget2'].values.tolist()
-    x_related_target3 = concat_text['RelatedTarget3'].values.tolist()    
     clean_data = [None for _ in range(len(raw_data))]
     
     for i in range(len(raw_data)):
         clean_data[i] = data_clean(raw_data[i],norm_dict) # clean each tweet text [['word1','word2'],[...],...]
         x_target[i] = data_clean(x_target[i],norm_dict)      
-        x_related_target1[i] = data_clean(x_related_target1[i],norm_dict)
-        x_related_target2[i] = data_clean(x_related_target2[i],norm_dict)
-        x_related_target3[i] = data_clean(x_related_target3[i],norm_dict)       
     
-    return clean_data,label,x_target,x_related_target1,x_related_target2,x_related_target3
+    return clean_data,label,x_target
