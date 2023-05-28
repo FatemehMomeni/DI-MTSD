@@ -8,11 +8,9 @@ import argparse
 import json
 import gc
 import gspread
-import preprocessing as pp
-import data_helper as dh
+import utils.preprocessing_sentsep as pp
+import utils.data_helper_sentsep as dh
 from transformers import AdamW
-import sys
-sys.path.append('/content/DI-MTSD/src')
 from utils import modeling, model_eval
 
 
