@@ -8,9 +8,11 @@ import argparse
 import json
 import gc
 import gspread
-import preprocessing as pp
-import data_helper as dh
+import utils.preprocessing as pp
+import utils.data_helper as dh
 from transformers import AdamW
+import sys
+sys.path.append('/content/DI-MTSD/src')
 from utils import modeling, model_eval
 
 
@@ -81,19 +83,28 @@ def run_classifier():
                 filename2 = '/content/DI-MTSD/Dataset/val_related.csv'
                 filename3 = '/content/DI-MTSD/Dataset/test_gen_related.csv'
                 
-                x_train,y_train,x_train_target,x_train_related_target1,x_train_related_target2,x_train_related_target3 = pp.clean_all(filename1,col,dataset_name,normalization_dict)
-                x_val,y_val,x_val_target,x_val_related_target1,x_val_related_target2,x_val_related_target3 = pp.clean_all(filename2,col,dataset_name,normalization_dict)
-                x_test,y_test,x_test_target,x_test_related_target1,x_test_related_target2,x_test_related_target3 = pp.clean_all(filename3,col,dataset_name,normalization_dict)            
+                x_train,y_train,x_train_target = pp.clean_all(filename1,col,dataset_name,normalization_dict)
+                x_val,y_val,x_val_target = pp.clean_all(filename2,col,dataset_name,normalization_dict)
+                x_test,y_test,x_test_target = pp.clean_all(filename3,col,dataset_name,normalization_dict)
+            
+            elif train_mode == "adhoc":
+                filename1 = '/home/ubuntu/'+dataset_name+'/raw_train_'+file+'.csv'  # E.g., load AM dataset 
+                filename2 = '/home/ubuntu/'+dataset_name+'/raw_val_'+file+'.csv'
+                filename3 = '/home/ubuntu/'+dataset_name+'/raw_test_'+file+'.csv'
+                x_train,y_train,x_train_target = pp.clean_all(filename1,col,dataset_name,normalization_dict)
+                x_val,y_val,x_val_target = pp.clean_all(filename2,col,dataset_name,normalization_dict)
+                x_test,y_test,x_test_target = pp.clean_all(filename3,col,dataset_name,normalization_dict)
 
             if model_name == 'student':
                 #y_train2 = torch.load(teacher[dataset_name]+'_seed{}.pt'.format(seed))  # load teacher predictions
-                y_train2 = torch.load('/content/DI-MTSD/teacher_models/different_test_dataset/corrected_code/teacher_output_all_batch'+'_seed{}.pt'.format(seed))
+                y_train2 = torch.load('/content/DI-MTSD/teacher_models/test_generalization_dataset/related_targets/batch/teacher_output_all_batch'+'_seed{}.pt'.format(seed))
                         
             num_labels = 3  # Favor, Against and None
-            
-            x_train_all = [x_train,y_train,x_train_target,x_train_related_target1,x_train_related_target2,x_train_related_target3]
-            x_val_all = [x_val,y_val,x_val_target,x_val_related_target1,x_val_related_target2,x_val_related_target3]
-            x_test_all = [x_test,y_test,x_test_target,x_test_related_target1,x_test_related_target2,x_test_related_target3]
+            # print(x_train_target[0])
+            x_train_all = [x_train,y_train,x_train_target]
+            x_val_all = [x_val,y_val,x_val_target]
+            x_test_all = [x_test,y_test,x_test_target]
+
 
             # set up the random seed
             random.seed(seed)
@@ -150,13 +161,7 @@ def run_classifier():
                 if model_name == 'teacher':
                     for input_ids,seg_ids,atten_masks,target,length in trainloader:
                         optimizer.zero_grad()
-                        for i in range(1,4):
-                          input_ids[0].extend(input_ids[i])
-                          seg_ids[0].extend(seg_ids[i])
-                          atten_masks[0].extend(atten_masks[i])
-                          target[0].extend(target[i])
-                          length[0].extend(length[i])
-                        output1 = model(input_ids[0], seg_ids[0], atten_masks[0], length[0])
+                        output1 = model(input_ids, seg_ids, atten_masks, length)
                         loss = loss_function(output1, target)
                         loss.backward()
                         nn.utils.clip_grad_norm_(model.parameters(), 1)
@@ -165,33 +170,26 @@ def run_classifier():
                 else:
                     for input_ids,seg_ids,atten_masks,target,length,target2 in trainloader:
                         optimizer.zero_grad()
-                        for i in range(1,4):
-                          input_ids[0].extend(input_ids[i])
-                          seg_ids[0].extend(seg_ids[i])
-                          atten_masks[0].extend(atten_masks[i])
-                          target[0].extend(target[i])
-                          length[0].extend(length[i])
-                          target2[0].extend(target2[i])                        
-                        output1 = model(input_ids[0], seg_ids[0], atten_masks[0], length[0])
+                        output1 = model(input_ids, seg_ids, atten_masks, length)
                         output2 = output1
 
                         # 3. proposed AKD
                         output2 = torch.empty(output1.shape).fill_(0.).cuda()
-                        for ind in range(len(target2[0])):
-                            soft = max(F.softmax(target2[0][ind]))
+                        for ind in range(len(target2)):
+                            soft = max(F.softmax(target2[ind]))
                             if soft <= theta:
                                 rrand = random.uniform(2,3)  # parameter b1 and b2 in paper
                             elif soft < theta+0.2 and soft > theta:  # parameter a1 and a2 are theta and theta+0.2 here 
                                 rrand = random.uniform(1,2)
                             else:
                                 rrand = 1
-                            target2[0][ind] = target2[0][ind]/rrand
+                            target2[ind] = target2[ind]/rrand
                             output2[ind] = output1[ind]/rrand
-                        target2[0] = F.softmax(target2[0])
+                        target2 = F.softmax(target2)
 
-                        loss = (1-alpha)*loss_function(output1, target[0]) + \
-                                alpha*loss_function2(F.log_softmax(output2), target2[0])
-                        loss2 = alpha*loss_function2(F.log_softmax(output2), target2[0])
+                        loss = (1-alpha)*loss_function(output1, target) + \
+                                alpha*loss_function2(F.log_softmax(output2), target2)
+                        loss2 = alpha*loss_function2(F.log_softmax(output2), target2)
                         loss.backward()
                         nn.utils.clip_grad_norm_(model.parameters(), 1)
                         optimizer.step()
@@ -208,13 +206,7 @@ def run_classifier():
                     train_preds = []
                     with torch.no_grad():
                         for input_ids,seg_ids,atten_masks,target,length in trainloader_distill:
-                        for i in range(1,4):
-                          input_ids[0].extend(input_ids[i])
-                          seg_ids[0].extend(seg_ids[i])
-                          atten_masks[0].extend(atten_masks[i])
-                          target[0].extend(target[i])
-                          length[0].extend(length[i])                            
-                            output1 = model(input_ids[0], seg_ids[0], atten_masks[0], length[0])
+                            output1 = model(input_ids, seg_ids, atten_masks, length)
                             train_preds.append(output1)
                         preds = torch.cat(train_preds, 0)
                         train_preds_distill.append(preds)
@@ -228,43 +220,30 @@ def run_classifier():
                         pred1 = model(x_val_input_ids, x_val_seg_ids, x_val_atten_masks, x_val_len)
                     else:
                         for input_ids,seg_ids,atten_masks,target,length in valloader:
-                        for i in range(1,4):
-                          input_ids[0].extend(input_ids[i])
-                          seg_ids[0].extend(seg_ids[i])
-                          atten_masks[0].extend(atten_masks[i])
-                          target[0].extend(target[i])
-                          length[0].extend(length[i])                          
-                            pred1 = model(input_ids[0], seg_ids[0], atten_masks[0], length[0]) # unified
+                            pred1 = model(input_ids, seg_ids, atten_masks, length) # unified
                             val_preds.append(pred1)
                         pred1 = torch.cat(val_preds, 0)
                     acc, f1_average, precision, recall = model_eval.compute_f1(pred1,y_val)
                     val_f1_average.append(f1_average)
 
                 # evaluation on test set
-                for i in range(1,4):
-                  x_test_len[0].extend(x_test_len[i])
-                  y_test[0].extend(y_test[i])
-                  x_test_input_ids[0].extend(x_test_input_ids[i])
-                  x_test_seg_ids[0].extend(x_test_seg_ids[i])
-                  x_test_atten_masks[0].extend(x_test_atten_masks[i])                                      
                 if train_mode == "unified":
-                    x_test_len_list = dh.sep_test_set(x_test_len[0],dataset_name)
-                    y_test_list = dh.sep_test_set(y_test[0],dataset_name)
-                    x_test_input_ids_list = dh.sep_test_set(x_test_input_ids[0],dataset_name)
-                    x_test_seg_ids_list = dh.sep_test_set(x_test_seg_ids[0],dataset_name)
-                    x_test_atten_masks_list = dh.sep_test_set(x_test_atten_masks[0],dataset_name)
-                
+                    x_test_len_list = dh.sep_test_set(x_test_len,dataset_name)
+                    y_test_list = dh.sep_test_set(y_test,dataset_name)
+                    x_test_input_ids_list = dh.sep_test_set(x_test_input_ids,dataset_name)
+                    x_test_seg_ids_list = dh.sep_test_set(x_test_seg_ids,dataset_name)
+                    x_test_atten_masks_list = dh.sep_test_set(x_test_atten_masks,dataset_name)
+                elif train_mode == "adhoc":
+                    x_test_len_list = [x_test_len]
+                    y_test_list = [y_test]
+                    x_test_input_ids_list, x_test_seg_ids_list, x_test_atten_masks_list = \
+                                    [x_test_input_ids], [x_test_seg_ids], [x_test_atten_masks]
+
                 with torch.no_grad():
                     if eval_batch[dataset_name]:
                         test_preds = []
                         for input_ids,seg_ids,atten_masks,target,length in testloader:
-                          for i in range(1,4):
-                            input_ids[0].extend(input_ids[i])
-                            seg_ids[0].extend(seg_ids[i])
-                            atten_masks[0].extend(atten_masks[i])
-                            target[0].extend(target[i])
-                            length[0].extend(length[i])                                                    
-                            pred1 = model(input_ids[0], seg_ids[0], atten_masks[0], length[0])
+                            pred1 = model(input_ids, seg_ids, atten_masks, length)
                             test_preds.append(pred1)
                         pred1 = torch.cat(test_preds, 0)
                         if train_mode == "unified":
@@ -301,7 +280,15 @@ def run_classifier():
             print("******************************************")
             print(max(best_result))
             print(best_result)
-            
+
+        # save to Google sheet
+        best_result_t = np.transpose(best_result).tolist()  # results on test set
+        best_result_t.append(best_val)  # results on val set
+        gc = gspread.service_account(filename='/home/ubuntu/service_account_google.json')
+        sh = gc.open("Stance_Aug").get_worksheet(sheet_num) 
+        row_num = len(sh.get_all_values())+1
+        sh.update('A{0}'.format(row_num), target_word_pair[target_index])
+        sh.update('B{0}:O{1}'.format(row_num,row_num+30), best_result_t)
 
 if __name__ == "__main__":
     run_classifier()
