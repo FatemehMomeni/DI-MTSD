@@ -11,6 +11,8 @@ import gspread
 import preprocessing as pp
 import data_helper as dh
 from transformers import AdamW
+import sys
+sys.path.append('/content/DI-MTSD/src')
 from utils import modeling, model_eval
 
 
