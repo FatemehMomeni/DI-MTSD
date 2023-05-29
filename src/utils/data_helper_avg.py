@@ -33,12 +33,17 @@ def convert_data_to_ids(tokenizer, target, related_target1, related_target2, rel
       for rt in related_targets:
         encoded_dict = tokenizer.encode_plus(
           rt[i],
-          add_special_tokens = False        
+          add_special_tokens = False,  
+          max_length = 128, 
+          padding = 'max_length',
+          return_attention_mask = False,
+          truncation = True,       
         )
-        sumation += encoded_dict['input_ids']
-      avg.append(sumation // 3)
+        sumation = [sumation[j]+encoded_dict['input_ids'][j] for j in range(128)]        
+      ave = [sumation[j]//3 for j in range(128)]
+      avg.append(ave)       
 
-    for rt1, sent in zip(avg, text):
+    for rt, sent in zip(avg, text):
         encoded_dict = tokenizer.encode_plus(
                             rt,
                             ' '.join(sent),             # Sentence to encode.
