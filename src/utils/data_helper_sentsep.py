@@ -9,8 +9,8 @@ def convert_data_to_ids(tokenizer, target, related_target1, related_target2, rel
     input_ids, seg_ids, attention_masks, sent_len = [], [], [], []
     tar_with_rel_tar = list()
     for tar in range(len(target)):
-      related_target = related_target1[tar][0] + ' [SEP] ' + related_target2[tar][0] + ' ' + related_target3[tar][0]
-      targets = ' '.join(target[tar]) + related_target
+      related_target = related_target1[tar][0] + ' ' + related_target2[tar][0] + ' ' + related_target3[tar][0]
+      targets = ' '.join(target[tar]) + ' [SEP] ' + related_target
       tar_with_rel_tar.append(targets)
 
     # added related targets as senetence
@@ -32,6 +32,50 @@ def convert_data_to_ids(tokenizer, target, related_target1, related_target2, rel
         sent_len.append(sum(encoded_dict['attention_mask']))      
     
     return input_ids, seg_ids, attention_masks, sent_len
+
+    # --------------- V2 (appending separately) ---------------
+    input_ids, seg_ids, attention_masks, sent_len = [], [], [], []
+    related_target = list()
+    for tar in range(len(target)):
+      related_target.append(related_target1[tar][0] + ' ' + related_target2[tar][0] + ' ' + related_target3[tar][0])
+    
+    for tar, sent in zip(target, text):
+        encoded_dict = tokenizer.encode_plus(
+                            ' '.join(tar),
+                            ' '.join(sent),             # Sentence to encode.
+                            add_special_tokens = True, # Add '[CLS]' and '[SEP]'
+                            max_length = 128,           # Pad & truncate all sentences.
+                            padding = 'max_length',
+                            return_attention_mask = True,   # Construct attn. masks.
+                            truncation = True,
+                      )
+    
+        # Add the encoded sentence to the list.    
+        input_ids.append(encoded_dict['input_ids'])  
+        seg_ids.append(encoded_dict['token_type_ids'])
+        attention_masks.append(encoded_dict['attention_mask'])
+        sent_len.append(sum(encoded_dict['attention_mask']))
+
+    for tar, sent in zip(related_target, text):
+        encoded_dict = tokenizer.encode_plus(
+                            tar,
+                            ' '.join(sent),             # Sentence to encode.
+                            add_special_tokens = True, # Add '[CLS]' and '[SEP]'
+                            max_length = 128,           # Pad & truncate all sentences.
+                            padding = 'max_length',
+                            return_attention_mask = True,   # Construct attn. masks.
+                            truncation = True,
+                      )
+    
+        # Add the encoded sentence to the list.    
+        input_ids.append(encoded_dict['input_ids'])  
+        seg_ids.append(encoded_dict['token_type_ids'])
+        attention_masks.append(encoded_dict['attention_mask'])
+        sent_len.append(sum(encoded_dict['attention_mask']))      
+    
+    labels.extend(labels) # labels is input, including stances
+
+    return input_ids, seg_ids, attention_masks, sent_len, labels
 
 
 # BERT/BERTweet tokenizer    
@@ -58,10 +102,23 @@ def data_helper_bert(x_train_all,x_val_all,x_test_all,main_task_name,model_selec
                     convert_data_to_ids(tokenizer, x_val_target, x_val_related_target1,x_val_related_target2,x_val_related_target3, x_val)
     x_test_input_ids, x_test_seg_ids, x_test_atten_masks, x_test_len = \
                     convert_data_to_ids(tokenizer, x_test_target, x_test_related_target1,x_test_related_target2,x_test_related_target3, x_test)
-    
+      
     x_train_all = [x_train_input_ids,x_train_seg_ids,x_train_atten_masks,y_train,x_train_len]
     x_val_all = [x_val_input_ids,x_val_seg_ids,x_val_atten_masks,y_val,x_val_len]
     x_test_all = [x_test_input_ids,x_test_seg_ids,x_test_atten_masks,y_test,x_test_len]
+
+    # --------------- V2 (appending separately) ---------------                    
+    x_train_input_ids, x_train_seg_ids, x_train_atten_masks, x_train_len, y_train2 = \
+                    convert_data_to_ids(tokenizer, x_train_target, x_train_related_target1,x_train_related_target2,x_train_related_target3, x_train, y_train)
+    x_val_input_ids, x_val_seg_ids, x_val_atten_masks, x_val_len, y_val2 = \
+                    convert_data_to_ids(tokenizer, x_val_target, x_val_related_target1,x_val_related_target2,x_val_related_target3, x_val, y_val)
+    x_test_input_ids, x_test_seg_ids, x_test_atten_masks, x_test_len, y_test2 = \
+                    convert_data_to_ids(tokenizer, x_test_target, x_test_related_target1,x_test_related_target2,x_test_related_target3, x_test, y_test)    
+
+    x_train_all = [x_train_input_ids,x_train_seg_ids,x_train_atten_masks,y_train2,x_train_len]
+    x_val_all = [x_val_input_ids,x_val_seg_ids,x_val_atten_masks,y_val2,x_val_len]
+    x_test_all = [x_test_input_ids,x_test_seg_ids,x_test_atten_masks,y_test2,x_test_len]  
+    
     
     print(len(x_train), sum(y_train))
     print("Length of final x_train: %d"%(len(x_train)))
