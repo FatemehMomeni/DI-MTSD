@@ -29,7 +29,7 @@ def convert_data_to_ids(tokenizer, target, related_target1, related_target2, rel
     related_targets = [related_target1, related_target2, related_target3]
     avg = list()
     for i in range(len(target)):
-      sumation = 0
+      sumation = [0 for j in range(128)]
       for rt in related_targets:
         encoded_dict = tokenizer.encode_plus(
           rt[i],
