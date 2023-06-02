@@ -16,14 +16,18 @@ def load_data(filename,usecols,col,dataset_name):
     related_target2 = pd.read_csv(filename[0],usecols=[4], encoding='ISO-8859-1')
     related_target3 = pd.read_csv(filename[0],usecols=[5], encoding='ISO-8859-1')    
     
-    if filename[0].split('/')[-1] != 'test_gen_related.csv':
-      raw_target.loc[10048: 20031] = related_target1.loc[10048: 20031]
-      raw_target.loc[20032: 30015] = related_target2.loc[20032: 30015]
-      raw_target.loc[30016:] = related_target3.loc[30016:]
+    if filename[0].split('/')[-1] == 'test_gen_related.csv':
+      raw_target.loc[3520: 7040] = related_target1.loc[3520: 7040]
+      raw_target.loc[7040: 10560] = related_target2.loc[7040: 10560]
+      raw_target.loc[10560:] = related_target3.loc[10560:]
+    elif filename[0].split('/')[-1] == 'train_related.csv':
+      raw_target.loc[9984: 19968] = related_target1.loc[9984: 19968]
+      raw_target.loc[19968: 29952] = related_target2.loc[19968: 29952]
+      raw_target.loc[29952:] = related_target3.loc[29952:]    
     else :
-      raw_target.loc[3616: 7135] = related_target1.loc[3616: 7135]
-      raw_target.loc[7136: 10655] = related_target2.loc[7136: 10655]
-      raw_target.loc[10656:] = related_target3.loc[10656:]
+      raw_target.loc[1888: 3776] = related_target1.loc[1888: 3776]
+      raw_target.loc[3776: 5664] = related_target2.loc[3776: 5664]
+      raw_target.loc[5664:] = related_target3.loc[5664:]
 
     if dataset_name in ['mt','semeval','am','covid','all']:
         label = pd.DataFrame.replace(raw_label,['FAVOR','NONE','AGAINST'], [2,1,0])
