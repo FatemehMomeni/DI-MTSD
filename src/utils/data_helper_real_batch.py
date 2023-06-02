@@ -109,7 +109,7 @@ def data_loader(x_all, batch_size, model_select, mode, model_name, **kwargs):
     if model_name == 'student' and mode == 'train':
         y2 = torch.tensor(kwargs['y_train2'], dtype=torch.float).cuda()  # load teacher predictions
         for z in range(4):
-          tensor_loader[z] = TensorDataset(x_input_ids[z],x_seg_ids[z],x_atten_masks[z],y[indices_train[z]:indices_train[z+1]],x_len[z],y2[indices_train[z],indices_train[z+1]])
+          tensor_loader[z] = TensorDataset(x_input_ids[z],x_seg_ids[z],x_atten_masks[z],y[indices_train[z]:indices_train[z+1]],x_len[z],y2[indices_train[z]:indices_train[z+1]])
     else:
       if mode == 'train':
         ind = indices_train
