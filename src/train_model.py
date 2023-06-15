@@ -94,10 +94,9 @@ def run_classifier():
       model.train()
 
       for input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, y in train_loader:           
-        tar_embeds, txt_embeds = model(input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, None)        
-        embeds = torch.cat((tar_embeds, txt_embeds), 1)                
+        tar_embeds = model(input_ids_tar, atten_mask_tar, None, None, None)
         optimizer.zero_grad()
-        output1 = model(None, None, None, None, embeds)
+        output1 = model(None, None, input_ids_txt, atten_mask_txt, tar_embeds)
         loss = loss_function(output1, y)
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), 1)
@@ -111,9 +110,8 @@ def run_classifier():
       train_preds = []
       with torch.no_grad():
         for input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, y in train_loader_distil:
-          tar_embeds, txt_embeds = model(input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, None)          
-          embeds = torch.cat((tar_embeds, txt_embeds), 1)
-          output1 = model(None, None, None, None, embeds)
+          tar_embeds = model(input_ids_tar, atten_mask_tar, None, None, None)          
+          output1 = model(None, None, input_ids_txt, atten_mask_txt, tar_embeds)
           train_preds.append(output1)
         preds = torch.cat(train_preds, 0)
         train_preds_distill.append(preds)
@@ -124,9 +122,8 @@ def run_classifier():
       val_preds = []
       with torch.no_grad():
         for input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, y in val_loader:
-          tar_embeds, txt_embeds = model(input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, None)          
-          embeds = torch.cat((tar_embeds, txt_embeds), 1)
-          pred1 = model(None, None, None, None, embeds)
+          tar_embeds = model(input_ids_tar, atten_mask_tar, None, None, None)          
+          pred1 = model(None, None, input_ids_txt, atten_mask_txt, tar_embeds)
           val_preds.append(pred1)
         pred1 = torch.cat(val_preds, 0)
         acc, f1_average, precision, recall = model_eval.compute_f1(pred1, val_labels)
@@ -137,9 +134,8 @@ def run_classifier():
       with torch.no_grad():
         test_preds = []
         for input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, y in test_loader:
-          tar_embeds, txt_embeds = model(input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, None)          
-          embeds = torch.cat((tar_embeds, txt_embeds), 1)
-          pred1 = model(None, None, None, None, embeds)
+          tar_embeds = model(input_ids_tar, atten_mask_tar, None, None, None)          
+          pred1 = model(None, None, input_ids_txt, atten_mask_txt, tar_embeds)
           test_preds.append(pred1)
         pred1 = torch.cat(test_preds, 0)
         pred1_list = dh.sep_test_set(pred1)
