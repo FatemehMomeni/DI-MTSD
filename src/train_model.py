@@ -1,171 +1,309 @@
+import json
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
 import random
 import numpy as np
 import pandas as pd
 import argparse
-import json
-import utils.data_helper as dh
-from utils import modeling, model_eval
-from transformers import AdamW, AutoModel, DistilBertModel
+import utils.data_origin as dh
+from transformers import AdamW
+from utils import modeling_origin, model_eval
+from collections import Counter
+# from transformers import BertTokenizer, AutoTokenizer, BertweetTokenizer
 
 
 def run_classifier():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input_target", type=str, default="all_teacher")
+    parser.add_argument("--model_select", type=str, default="Bertweet", help="BERTweet or BERT model")
+    parser.add_argument("--col", type=str, default="Stance1", help="Stance1 or Stance2")
+    parser.add_argument("--train_mode", type=str, default="unified", help="unified or adhoc")
+    parser.add_argument("--model_name", type=str, default="teacher", help="teacher or student")
+    parser.add_argument("--dataset_name", type=str, default="all", help="mt,semeval,am,wtwt,covid or all-dataset")
+    parser.add_argument("--filename", type=str)
+    parser.add_argument("--lr", type=float, default=2e-5)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--epochs", type=int, default=5)
+    parser.add_argument("--dropout", type=float, default=0.)
+    parser.add_argument("--alpha", type=float, default=0.7)
+    parser.add_argument("--theta", type=float, default=0.6, help="AKD parameter")
+    args = parser.parse_args()
 
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--lr", type=float, default=2e-5)
-  parser.add_argument("--batch_size", type=int, default=32)
-  parser.add_argument("--epochs", type=int, default=5)
-  parser.add_argument("--dropout", type=float, default=0.)
-  parser.add_argument("--alpha", type=float, default=0.7)
-  args = parser.parse_args()
+    random_seeds = [1]
+    target_word_pair = [args.input_target]
+    model_select = args.model_select
+    col = args.col
+    train_mode = args.train_mode
+    model_name = args.model_name
+    dataset_name = args.dataset_name
+    file = args.filename
+    lr = args.lr
+    batch_size = args.batch_size
+    total_epoch = args.epochs
+    dropout = args.dropout
+    alpha = args.alpha
+    theta = args.theta
 
-  random_seeds = [1]
-  lr = args.lr
-  batch_size = args.batch_size
-  total_epoch = args.epochs
-  dropout = args.dropout
-  alpha = args.alpha
+    # create normalization dictionary for preprocessing
+    # with open("./noslang_data.json", "r") as f:
+    #     data1 = json.load(f)
+    # data2 = {}
+    # with open("./emnlp_dict.txt", "r") as f:
+    #     lines = f.readlines()
+    #     for line in lines:
+    #         row = line.split('\t')
+    #         data2[row[0]] = row[1].rstrip()
+    # normalization_dict = {**data1, **data2}
 
-  target_num = 3  # 'all': 3 (generalization), 4 (srq)
-  eval_batch = True
+    # saved name of teacher predictions
+    teacher = {'all': 'teacher_output_all_batch'}
+    target_num = {'all': 3}
+    eval_batch = {'all': True}
 
-  best_result, best_val = [], []
-  for seed in random_seeds:
-    print("current random seed: ", seed)        
-    filename1 = '/content/DI-MTSD/Dataset/train_related_processed.csv'
-    filename2 = '/content/DI-MTSD/Dataset/val_related_processed.csv'
-    filename3 = '/content/DI-MTSD/Dataset/test_related_processed.csv'
-    train = pd.read_csv(filename1, encoding='ISO-8859-1')
-    validation = pd.read_csv(filename2, encoding='ISO-8859-1')
-    test = pd.read_csv(filename3, encoding='ISO-8859-1')
+    for target_index in range(len(target_word_pair)):
+        best_result, best_val = [], []
+        for seed in random_seeds:
+            print("current random seed: ", seed)
+            train = pd.read_csv('C:/Users/DrZojaji/Desktop/data/train_domain.csv', encoding='ISO-8859-1')
+            validation = pd.read_csv('C:/Users/DrZojaji/Desktop/data/val_domain.csv', encoding='ISO-8859-1')
+            test = pd.read_csv('C:/Users/DrZojaji/Desktop/data/test_domain.csv', encoding='ISO-8859-1')
 
-    train_tar = train['Target'].values.tolist()
-    train_txt = train['Tweet'].values.tolist()
-    y_train = train['Stance'].values.tolist()
+            train_tar = train['Target'].values.tolist()
+            train_txt = train['Tweet'].values.tolist()
+            y_train = train['Stance'].values.tolist()
+            train_rel_tar1 = train['RelatedTarget1'].values.tolist()
+            train_rel_tar2 = train['RelatedTarget2'].values.tolist()
+            train_rel_tar3 = train['RelatedTarget3'].values.tolist()
+            train_domain = train['domain'].values.tolist()
 
-    val_tar = validation['Target'].values.tolist()
-    val_txt = validation['Tweet'].values.tolist()
-    y_val = validation['Stance'].values.tolist()
+            val_tar = validation['Target'].values.tolist()
+            val_txt = validation['Tweet'].values.tolist()
+            y_val = validation['Stance'].values.tolist()
+            val_rel_tar1 = validation['RelatedTarget1'].values.tolist()
+            val_rel_tar2 = validation['RelatedTarget2'].values.tolist()
+            val_rel_tar3 = validation['RelatedTarget3'].values.tolist()
+            val_domain = validation['domain'].values.tolist()
 
-    test_tar = test['Target'].values.tolist()
-    test_txt = test['Tweet'].values.tolist()
-    y_test = test['Stance'].values.tolist()
+            test_tar = test['Target'].values.tolist()
+            test_txt = test['Tweet'].values.tolist()
+            y_test = test['Stance'].values.tolist()
+            test_rel_tar1 = test['RelatedTarget1'].values.tolist()
+            test_rel_tar2 = test['RelatedTarget2'].values.tolist()
+            test_rel_tar3 = test['RelatedTarget3'].values.tolist()
+            test_domain = test['domain'].values.tolist()
 
-    train = [train_tar, train_txt, y_train]
-    val = [val_tar, val_txt, y_val]
-    test = [test_tar, test_txt, y_test]
+            if model_name == 'student':
+                y_train2 = torch.load('./target_domain_augmented/freeze_seed1.pt')
+                # y_train2 = torch.load(teacher[dataset_name] + '_seed{}.pt'.format(seed))  # load teacher predictions
 
-    # set up the random seed
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
+            num_labels = 3  # Favor, Against and None
+            train = [train_tar, train_txt, y_train, train_rel_tar1, train_rel_tar2, train_rel_tar3, train_domain]
+            val = [val_tar, val_txt, y_val, val_rel_tar1, val_rel_tar2, val_rel_tar3, val_domain]
+            test = [test_tar, test_txt, y_test, test_rel_tar1, test_rel_tar2, test_rel_tar3, test_domain]
 
-    num_labels = len(set(y_train))  # Favor, Against and None len(set(y_train))
-    model = modeling.stance_classifier(num_labels).cuda()
-    
-    # prepare for model
-    train_loader, train_loader_distil = dh.data_helper_bert(train, batch_size, 'train')
-    val_loader, val_labels = dh.data_helper_bert(val, batch_size, 'val')
-    test_loader, test_labels = dh.data_helper_bert(test, batch_size, 'test')
+            # set up the random seed
+            random.seed(seed)
+            np.random.seed(seed)
+            torch.manual_seed(seed)
 
-    for n, p in model.named_parameters():
-      if "distilbert.embeddings" in n:
-        p.requires_grad = False
+            # prepare for model
+            x_train_all = dh.data_helper_bert(train, target_word_pair[target_index], model_select)
+            x_val_all = dh.data_helper_bert(val, target_word_pair[target_index], model_select)
+            x_test_all = dh.data_helper_bert(test, target_word_pair[target_index], model_select)
 
-    optimizer_grouped_parameters = [
-      {'params': [p for n, p in model.named_parameters() if n.startswith('bert.encoder')] , 'lr': lr},
-      {'params': [p for n, p in model.named_parameters() if n.startswith('bert.pooler')] , 'lr': 1e-3},
-      {'params': [p for n, p in model.named_parameters() if n.startswith('linear')], 'lr': 1e-3},
-      {'params': [p for n, p in model.named_parameters() if n.startswith('out')], 'lr': 1e-3}
-    ]
+            if model_name == 'teacher':
+                x_train_input_ids, x_train_seg_ids, x_train_atten_masks, y_train, x_train_len, trainloader, \
+                    trainloader_distill = dh.data_loader(x_train_all, batch_size, model_select, 'train', model_name)
+                # x_train_input_ids, x_train_atten_masks, y_train, x_train_len, trainloader, \
+                #     trainloader_distill = dh.data_loader(x_train_all, batch_size, model_select, 'train', model_name)
+            else:
+                x_train_input_ids, x_train_seg_ids, x_train_atten_masks, y_train, x_train_len, trainloader, \
+                    trainloader_distill = dh.data_loader(x_train_all, batch_size, model_select, 'train', model_name, \
+                                                         y_train2=y_train2)
+                # x_train_input_ids, x_train_atten_masks, y_train, x_train_len, trainloader, \
+                #     trainloader_distill = dh.data_loader(x_train_all, batch_size, model_select, 'train', model_name, \
+                #                                          y_train2=y_train2)
+            x_val_input_ids, x_val_seg_ids, x_val_atten_masks, y_val, x_val_len, valloader = \
+                dh.data_loader(x_val_all, batch_size, model_select, 'val', model_name)
+            x_test_input_ids, x_test_seg_ids, x_test_atten_masks, y_test, x_test_len, testloader = \
+                dh.data_loader(x_test_all, batch_size, model_select, 'test', model_name)
+            # x_val_input_ids, x_val_atten_masks, y_val, x_val_len, valloader = \
+            #     dh.data_loader(x_val_all, batch_size, model_select, 'val', model_name)
+            # x_test_input_ids, x_test_atten_masks, y_test, x_test_len, testloader = \
+            #     dh.data_loader(x_test_all, batch_size, model_select, 'test', model_name)
 
-    loss_function = nn.CrossEntropyLoss(reduction='sum')
-    optimizer = AdamW(optimizer_grouped_parameters, lr=lr)
+            model = modeling_origin.stance_classifier(num_labels, model_select).cuda()
 
-    sum_loss, sum_loss2 = [], []
-    val_f1_average = []
-    train_preds_distill, train_cls_distill = [], []
-    test_f1_average = [[] for _ in range(target_num)]
+            for n, p in model.named_parameters():
+                if "bert.embeddings" in n:
+                    p.requires_grad = False
 
-    for epoch in range(total_epoch):
-      print('Epoch:', epoch)
-      train_loss, train_loss2 = [], []
-      model.train()
+            optimizer_grouped_parameters = [
+                {'params': [p for n, p in model.named_parameters() if n.startswith('bert.encoder')], 'lr': lr},
+                {'params': [p for n, p in model.named_parameters() if n.startswith('bert.pooler')], 'lr': 1e-3},
+                {'params': [p for n, p in model.named_parameters() if n.startswith('linear')], 'lr': 1e-3},
+                {'params': [p for n, p in model.named_parameters() if n.startswith('out')], 'lr': 1e-3}
+            ]
 
-      for input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, y in train_loader:           
-        tar_embeds, txt_embeds = model(input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, None)        
-        embeds = torch.cat((tar_embeds, txt_embeds), 1)                
-        optimizer.zero_grad()
-        output1 = model(None, None, None, None, embeds)
-        loss = loss_function(output1, y)
-        loss.backward()
-        nn.utils.clip_grad_norm_(model.parameters(), 1)
-        optimizer.step()
-        train_loss.append(loss.item())
-      sum_loss.append(sum(train_loss)/len(train_txt))
-      print(sum_loss[epoch])
+            loss_function = nn.CrossEntropyLoss(reduction='sum')
+            if model_name == 'student':
+                loss_function2 = nn.KLDivLoss(reduction='sum')
 
-      # train evaluation
-      model.eval()
-      train_preds = []
-      with torch.no_grad():
-        for input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, y in train_loader_distil:
-          tar_embeds, txt_embeds = model(input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, None)          
-          embeds = torch.cat((tar_embeds, txt_embeds), 1)
-          output1 = model(None, None, None, None, embeds)
-          train_preds.append(output1)
-        preds = torch.cat(train_preds, 0)
-        train_preds_distill.append(preds)
-        print("The size of train_preds is: ", preds.size())
+            optimizer = AdamW(optimizer_grouped_parameters, lr=lr)
 
-      # evaluation on val set
-      model.eval()
-      val_preds = []
-      with torch.no_grad():
-        for input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, y in val_loader:
-          tar_embeds, txt_embeds = model(input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, None)          
-          embeds = torch.cat((tar_embeds, txt_embeds), 1)
-          pred1 = model(None, None, None, None, embeds)
-          val_preds.append(pred1)
-        pred1 = torch.cat(val_preds, 0)
-        acc, f1_average, precision, recall = model_eval.compute_f1(pred1, val_labels)
-        val_f1_average.append(f1_average)
+            sum_loss, sum_loss2 = [], []
+            val_f1_average = []
+            train_preds_distill, train_cls_distill = [], []
+            if train_mode == "unified":
+                test_f1_average = [[] for i in range(target_num[dataset_name])]
 
-      # evaluation on test set
-      y_test_list = dh.sep_test_set(test_labels)
-      with torch.no_grad():
-        test_preds = []
-        for input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, y in test_loader:
-          tar_embeds, txt_embeds = model(input_ids_tar, atten_mask_tar, input_ids_txt, atten_mask_txt, None)          
-          embeds = torch.cat((tar_embeds, txt_embeds), 1)
-          pred1 = model(None, None, None, None, embeds)
-          test_preds.append(pred1)
-        pred1 = torch.cat(test_preds, 0)
-        pred1_list = dh.sep_test_set(pred1)
+            for epoch in range(0, total_epoch):
+                print('Epoch:', epoch)
+                train_loss, train_loss2 = [], []
+                model.train()
+                if model_name == 'teacher':
+                    for input_ids, seg_ids, atten_masks, target, length in trainloader:
+                        optimizer.zero_grad()
+                        output1 = model(input_ids, seg_ids, atten_masks, length)
+                        loss = loss_function(output1, target)
+                        loss.backward()
+                        nn.utils.clip_grad_norm_(model.parameters(), 1)
+                        optimizer.step()
+                        train_loss.append(loss.item())
+                else:
+                    for input_ids, seg_ids, atten_masks, target, length, target2 in trainloader:
+                        optimizer.zero_grad()
+                        output1 = model(input_ids, seg_ids, atten_masks, length)
+                        output2 = output1
 
-        test_preds = []
-        for ind in range(len(y_test_list)):
-          pred1 = pred1_list[ind]
-          test_preds.append(pred1)
-          acc, f1_average, precision, recall = model_eval.compute_f1(pred1, y_test_list[ind])
-          test_f1_average[ind].append(f1_average)
+                        # 3. proposed AKD
+                        output2 = torch.empty(output1.shape).fill_(0.).cuda()
+                        for ind in range(len(target2)):
+                            soft = max(F.softmax(target2[ind]))
+                            if soft <= theta:
+                                rrand = random.uniform(2, 3)  # parameter b1 and b2 in paper
+                            elif soft < theta + 0.2 and soft > theta:  # parameter a1 and a2 are theta and theta+0.2 here
+                                rrand = random.uniform(1, 2)
+                            else:
+                                rrand = 1
+                            target2[ind] = target2[ind] / rrand
+                            output2[ind] = output1[ind] / rrand
+                        target2 = F.softmax(target2)
 
-    # model that performs best on the dev set is evaluated on the test set
-    best_epoch = [index for index,v in enumerate(val_f1_average) if v == max(val_f1_average)][-1]
-    best_result.append([f1[best_epoch] for f1 in test_f1_average])
+                        loss = (1 - alpha) * loss_function(output1, target) + \
+                               alpha * loss_function2(F.log_softmax(output2), target2)
+                        loss2 = alpha * loss_function2(F.log_softmax(output2), target2)
+                        loss.backward()
+                        nn.utils.clip_grad_norm_(model.parameters(), 1)
+                        optimizer.step()
+                        train_loss.append(loss.item())
+                        train_loss2.append(loss2.item())
+                    sum_loss2.append(sum(train_loss2) / len(train_txt))
+                    print(sum_loss2[epoch])
+                sum_loss.append(sum(train_loss) / len(train_txt))
+                print(sum_loss[epoch])
 
-    print("******************************************")
-    print("dev results with seed {} on all epochs".format(seed))
-    print(val_f1_average)
-    best_val.append(val_f1_average[best_epoch])
-    print("******************************************")
-    print("test results with seed {} on all epochs".format(seed))
-    print(test_f1_average)
-    print("******************************************")
-    print(max(best_result))
-    print(best_result)
+                if model_name == 'teacher':
+                    # train evaluation
+                    model.eval()
+                    train_preds = []
+                    with torch.no_grad():
+                        for input_ids, seg_ids, atten_masks, target, length in trainloader_distill:
+                            output1 = model(input_ids, seg_ids, atten_masks, length)
+                            train_preds.append(output1)
+                        preds = torch.cat(train_preds, 0)
+                        train_preds_distill.append(preds)
+                        print("The size of train_preds is: ", preds.size())
+
+                # evaluation on val set
+                model.eval()
+                val_preds = []
+                with torch.no_grad():
+                    if not eval_batch[dataset_name]:
+                        pred1 = model(x_val_input_ids, x_val_atten_masks, x_val_len)
+                    else:
+                        for input_ids, seg_ids, atten_masks, target, length in valloader:
+                            pred1 = model(input_ids, seg_ids, atten_masks, length)  # unified
+                            val_preds.append(pred1)
+                        pred1 = torch.cat(val_preds, 0)
+                    acc, f1_average, precision, recall = model_eval.compute_f1(pred1, y_val)
+                    val_f1_average.append(f1_average)
+
+                # evaluation on test set
+                if train_mode == "unified":
+                    x_test_len_list = dh.sep_test_set(x_test_len, dataset_name)
+                    y_test_list = dh.sep_test_set(y_test, dataset_name)
+                    x_test_input_ids_list = dh.sep_test_set(x_test_input_ids, dataset_name)
+                    x_test_seg_ids_list = dh.sep_test_set(x_test_seg_ids, dataset_name)
+                    x_test_atten_masks_list = dh.sep_test_set(x_test_atten_masks, dataset_name)
+
+                # #######
+                # prompts = []
+                # numbers = {'label': [], 'pred': []}
+
+                with torch.no_grad():
+                    if eval_batch[dataset_name]:
+                        test_preds = []
+                        for input_ids, seg_ids, atten_masks, target, length in testloader:
+                            pred1 = model(input_ids, seg_ids, atten_masks, length)
+                            test_preds.append(pred1)
+
+                            # #######
+                            # tweet = [tokenizer.decode(x) for x in input_ids]
+                            # prompts.extend(tweet)
+
+                        pred1 = torch.cat(test_preds, 0)
+                        if train_mode == "unified":
+                            pred1_list = dh.sep_test_set(pred1, dataset_name)
+
+                    test_preds = []
+                    for ind in range(len(y_test_list)):
+                        if not eval_batch[dataset_name]:
+                            pred1 = model(x_test_input_ids_list[ind], x_test_seg_ids_list[ind], \
+                                          x_test_atten_masks_list[ind], x_test_len_list[ind])
+                        else:
+                            pred1 = pred1_list[ind]
+                        test_preds.append(pred1)
+                        # ######
+                        # rounded_preds = torch.nn.functional.softmax(pred1)
+                        # _, indices = torch.max(rounded_preds, 1)
+                        # pred1_nd = indices.cpu().numpy()
+                        # for n in range(len(pred1_nd)):
+                        #     char_num = Counter(str(pred1_nd[n]))
+                        #     char_max = max(char_num, key=char_num.get)
+                        #     numbers['pred'].append(int(char_max))
+                        #     numbers['label'].append(y_test_list[ind].cpu().numpy()[n])
+
+                        acc, f1_average, precision, recall = model_eval.compute_f1(pred1, y_test_list[ind])
+                        test_f1_average[ind].append(f1_average)
+                    # #######
+                    # tweets = pd.DataFrame(prompts, columns=['Tweet'])
+                    # stances = pd.DataFrame(numbers['label'], columns=['label'])
+                    # predicts = pd.DataFrame(numbers['pred'], columns=['predict'])
+                    # sample = pd.concat([tweets, stances, predicts], axis=1, ignore_index=True)
+                    # sample.to_csv('C:/Users/DrZojaji/Desktop/sample.csv')
+
+            # model that performs best on the dev set is evaluated on the test set
+            best_epoch = [index for index, v in enumerate(val_f1_average) if v == max(val_f1_average)][-1]
+            best_result.append([f1[best_epoch] for f1 in test_f1_average])
+
+            if model_name == 'teacher':
+                best_preds = train_preds_distill[best_epoch]
+                torch.save(best_preds, './target_domain_augmented/new_prompt_mlm_seed{}.pt'.format(seed))
+
+            print("******************************************")
+            print("dev results with seed {} on all epochs".format(seed))
+            print(val_f1_average)
+            best_val.append(val_f1_average[best_epoch])
+            print("******************************************")
+            print("test results with seed {} on all epochs".format(seed))
+            print(test_f1_average)
+            print("******************************************")
+            print(max(best_result))
+            print(best_result)
 
 
 if __name__ == "__main__":
-  run_classifier()
+    run_classifier()
